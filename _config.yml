@@ -4,6 +4,8 @@
 
 title: blank # the website title (if blank, full name will be used instead)
 first_name: Anshuman
+pronunciation: /ʌnʃuman/ (IPA) # phonetic spelling of name
+pronunciation_url: https://youtu.be/rwmqohilIgA?si=21rDgR2L0MOkovcVt=1 #blank # Can replace with link to audio/video with your name
 middle_name: 
 last_name: Suri
 email: ans.suri@northeastern.edu

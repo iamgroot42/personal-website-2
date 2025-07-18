@@ -1,12 +1,12 @@
 ---
 layout: distill
 title: Advice for working on ML projects
-description: Lessons and recommendations based on my experiences working on ML projects (Python in general).
+description: Lessons and recommendations based on my experiences working on ML projects.
 # tags: watermark removal, adversarial examples, diffusion models
-date: 2025-11-25
+date: 2025-07-17
 thumbnail: assets/img/ml_consideration_squirrel.webp
-published: false
-citation: true
+published: true
+citation: false
 featured: true
 categories: guide
 
@@ -27,25 +27,25 @@ toc:
   - subsections:
     - name: PIP-it!
     - name: Dataclasses are your friend
-    - name: Generative Models
   - name: Evaluations
   - subsections:
     - name: How do you like them notifications?
     - name: Like a magic WAND(b)
   - name: I feel the need, the need for speed
   - subsections:
-    - name: Compile "can" be your friend
+    - name: Newbie gains with cupy
+    - name: Compile can be your friend
     - name: Async transfers
-    - name: Identify Bottlenecks
     - name: One batch, two batch, penny and dime
   - name: SLURM SLURM, Peralta
+  - name: Takeaways
 ---
 
 Working on ML projects in academia (and beyond) often feels like a constant battle between moving fast to test ideas and maintaining enough organization to actually make progress.
 
-Based on my experiences across academia and industry, working with collaborators who have diverse coding backgrounds, and—perhaps most importantly—browsing through GitHub repositories of varying quality, I've picked up practices and design patterns that have genuinely transformed how I approach ML projects. These aren't abstract software engineering principles; they're tested techniques that have saved me from countless headaches and helped me move faster while making fewer mistakes.
+Based on my experiences, working with collaborators who have diverse coding backgrounds, and—perhaps most importantly—browsing through GitHub repositories of varying quality, I've picked up practices and design patterns that have genuinely transformed how I approach ML projects. These aren't abstract software engineering principles; they're tested techniques that have saved me from countless headaches and helped me move faster while making fewer mistakes.
 
-In this blog, I'll document the lessons that have made the biggest difference in my day-to-day research workflow. Some might seem obvious in hindsight, others might challenge how you currently organize your work. Either way, I hope they help you spend less time wrestling with logistics and more time focused on the actual science. Note that this is a living document<d-footnote>This means I will update it every now and then based on new things I learn</d-footnote>—I'm constantly learning new tricks, and I'll add them here as I discover what works.
+In this blog, I'll document the lessons that have made the biggest difference in my day-to-day research workflow. Some might seem obvious in hindsight, others might challenge how you currently organize your work. Either way, I hope they help you spend less time wrestling with logistics and more time focused on the actual science. Note that this is a living document<d-footnote>This means I will update it every now and then based on things I learn</d-footnote>—I'm constantly learning new tricks, and I'll add them here as I discover what works.
 
 # Structuring your Codebase
 
@@ -54,6 +54,7 @@ Some experiments are straightforward and can be self-contained in a file or two.
 Let's say you've developed a new form of adversarial training and want to run experiments for varying perturbation strengths—including a baseline without any defense. Your project folder might look like this:
 
 ```bash
+experiments/
 ├── standard_training.py
 ├── adversarial_training.py
 ```
@@ -87,16 +88,21 @@ def evaluate(model, loader):
   return acc / len(loader)
 ```
 
-There are two big issues here. First, the accuracy calculation is incorrect: `len(loader)` gives the number of batches, not the dataset size. Second, the model is returned to training mode after evaluation but is never set to eval mode before evaluation begins. This can be especially problematic when the model has data-dependent layers like batch normalization that accumulate statistics.
+There are two big issues here:
+- the accuracy calculation is incorrect: `len(loader)` gives the number of batches, not the dataset size, and
+- the model is returned to training mode after evaluation but is never set to eval mode before evaluation begins. This can be especially problematic when the model has data-dependent layers like batch normalization that accumulate statistics.
 
 When the researcher catches this issue, they can at least be assured that whatever mistake they made invalidates all their experiments equally (requiring a complete redo), rather than having the same function in another file, correcting it only there, and making incorrect conclusions about which technique works better.
 
 ## PIP-it!
 
-As your codebase grows and you start working on multiple related projects, you'll inevitably find yourself copy-pasting utility functions, model implementations, and evaluation scripts across different repositories. Let's say you've developed a novel membership inference attack for your latest paper. Six months later, you're working on a different project and want to use that same attack as a baseline or evaluation metric. What do you do? Copy the files over? Git submodule? Or worse, reimplement it from scratch because you can't find the exact version that worked?
+As your codebase grows and you start working on multiple related projects, you'll inevitably find yourself copy-pasting utility functions, model implementations, and evaluation scripts across different repositories. Let's say you've developed a novel membership inference attack for your latest paper. Six months later, you're working on a different project and want to use that same attack as a baseline or evaluation metric. What do you do? Copy the files over? Git submodule? Reimplement it from scratch because you can't find the exact version that worked?
 
-This is where creating a proper Python package from your research code pays dividends. Not only does it make your life easier when reusing code across projects, but it also makes it significantly more likely that others will actually use your research. Think about it: would you rather download a ZIP file, dig through someone's experimental scripts, and try to figure out which functions are reusable, or would you prefer to simply `pip install` their package and import the functions you need? The latter is much more appealing, and higher adoption of your methods means more impact.
+This is where creating a proper Python package from your research code can help. Not only does it make your life easier when reusing code across projects, but it also makes it significantly more likely that others will actually use your research. Think about it: would you rather
+- 😵‍💫 download a ZIP file, dig through someone's experimental scripts, and try to figure out which functions are reusable, or would you prefer to 
+- 😺 simply `pip install` their package and import the functions you need?
 
+The latter is much more appealing, and higher adoption of your methods means more impact.
 Here's how this evolution typically looks. You start with a project structure like this:
 
 ```bash
@@ -139,9 +145,11 @@ from mia_toolkit.data import load_private_dataset
 
 The benefits extend beyond just your own convenience. When other researchers want to compare against your method, they don't need to reverse-engineer your experimental scripts—they can simply install your package and focus on the science. This dramatically lowers the barrier to adoption and increases the likelihood that your work will be built upon by others.
 
-That said, don't go overboard with this. Not every 50-line script needs to become a package, and there's a delicate balance between making functions generic enough for reuse versus specific enough to actually be useful for your research. I typically package code when I find myself copy-pasting the same utilities across 2-3 projects, or when I think the methods are novel enough that others might want to use them as baselines.
+<div class="alert alert-info" role="alert">
+That being said, don't go overboard with this. Not every 50-line script needs to become a package, and there's a delicate balance between making functions generic enough for reuse versus specific enough to actually be useful for your research. I typically package code when I find myself copy-pasting the same utilities across 2-3 projects, or when I think the methods are novel enough that others might want to use them as baselines.
+</div>
 
-A few practical notes: keep your package dependencies minimal and well-documented. I personally try to maintain one conda environment for most of my work, creating new ones only when external baselines require very specific package versions that would otherwise create conflicts. Also, resist the urge to over-engineer: your research package doesn't need to be production-ready software, it just needs to be clean and documented enough for other researchers to use.
+A few practical notes: keep your package dependencies minimal and well-documented. I personally try to maintain one conda environment for most of my work, creating new ones only when external baselines require very specific package versions that would otherwise create conflicts.
 
 ## Dataclasses are your friend
 
@@ -168,7 +176,7 @@ parser.add_argument('--random_seed', type=int, default=0)
 
 This gets unwieldy fast, and worse, it's error-prone. What if you have both `args.lr` and `args.poison_lr`? It's easy to accidentally use the wrong one in your code, especially when you're debugging at 2 AM<d-footnote>Old habits: Bryan Johnson and Matthew Walker have convinced me to improve my sleeping habits. You should too- it makes a big difference!</d-footnote>.
 
-Enter dataclasses with [SimpleParsing](https://github.com/lebrice/SimpleParsing)—a wrapper around argparse that leverages Python's dataclass functionality. Instead of the mess above, you can structure your arguments hierarchically:
+My favorite go-to for these situations is [SimpleParsing](https://github.com/lebrice/SimpleParsing)—a wrapper around argparse that leverages Python's dataclass functionality. Instead of the mess above, you can structure your arguments hierarchically:
 
 ```python
 from dataclasses import dataclass
@@ -252,11 +260,11 @@ python train.py --config_path configs/experiment_1.yaml
 
 # Evaluations
 
-blah blah blah
+Efficient experiment management can mean the difference between spending hours (or days) babysitting jobs and actually having time to think and do research—using the right tools lets you offload the busywork and focus on what matters.
 
 ## How do you like them notifications?
 
-Picture this: you start a training run that's supposed to take 6 hours, close your laptop, and go about your day. Six hours later, you eagerly check back expecting to see beautiful loss curves, only to discover your script crashed 20 minutes in due to a CUDA out-of-memory error. Sound familiar?
+Picture this: you start a training run that's supposed to take 6 hours, close your laptop, and go about your day. Six hours later, you eagerly check back expecting to see beautiful loss curves, only to discover your script crashed 20 minutes in due to a CUDA out-of-memory error 😱. Sound familiar?
 
 Most ML experiments take hours or even days to complete, and the traditional approach of estimating runtime with `tqdm` and checking the ETA only gets you so far. What you really need is to know the moment your experiment finishes—or more importantly, when it crashes.
 
@@ -285,13 +293,13 @@ Now you can run any experiment with notifications by simply prefixing your comma
 knocky python train_resnet.py --epochs 200
 ```
 
-The beauty is that you get notifications both when your script completes successfully and when it crashes with an error. No more checking in every few hours or trying to estimate completion times. I personally use Telegram<d-footnote>Setup details for tokens and bot ID [here](https://github.com/huggingface/knockknock?tab=readme-ov-file#telegram)</d-footnote> since it's reliable and I always have it on my phone, but knockknock supports Slack, Discord, email, and several other platforms.
+The beauty is that you get notifications both when your script completes successfully and when it crashes with an error. No more checking in every few hours or trying to estimate completion times. I personally use Telegram<d-footnote>Setup details for tokens and bot ID here: https://github.com/huggingface/knockknock?tab=readme-ov-file#telegram</d-footnote> since it's reliable and I always have it on my phone, but knockknock supports Slack, Discord, email, and several other platforms.
 
 This simple change has saved me countless hours of babysitting experiments (or logging in anxiously every 1-2 hours). Plus, there's something deeply satisfying about getting a notification that your model finished training while you're grabbing coffee or on your way to work.
 
 ## Like a magic WAND(b)
 
-Remember when comparing different experimental runs meant opening multiple terminal windows, squinting at loss values printed to stdout, and trying to remember which combination of hyperparameters gave you that promising result from last Tuesday? Or worse—frantically searching through your bash history because you forgot the exact arguments you used for your best-performing model?
+Remember when comparing different experimental runs meant opening multiple terminal windows, squinting at loss values printed to stdout, and trying to remember which combination of hyperparameters gave you that promising result from last Tuesday? Or frantically searching through your bash history because you forgot the exact arguments you used for your best-performing model?
 
 I used to have training scripts that would dump metrics to text files, create matplotlib plots locally, and leave me manually tracking which experiment was which:
 
@@ -319,7 +327,7 @@ def train_epoch(model, loader, optimizer, epoch, exp_name):
 
 Then you end up with a mess of files like `resnet_lr001_wd0001_loss.txt` and `resnet_lr01_wd0005_loss.txt`, and good luck remembering which file corresponds to which exact experimental setup three weeks later.
 
-Enter [Weights & Biases (wandb)](https://wandb.ai/)—hands down the biggest<d-footnote>TensorBoard and MLflow are good alternatives too; I just prefer wandb personally.</d-footnote> game-changer for my research workflow:
+Enter [Weights & Biases (wandb)](https://wandb.ai/)—hands down the biggest<d-footnote>TensorBoard and MLflow are good alternatives too.</d-footnote> game-changer for my research workflow:
 
 ```python
 import wandb
@@ -367,7 +375,7 @@ The magic isn't just in the simplicity of logging—it's in what wandb does with
 - **Code tracking**: Git commit hash, diff, and even the exact command you ran
 - **Reproducibility**: One-click to see the exact environment and arguments
 
-But the real killer feature is **experiment comparison**. Instead of manually plotting loss curves from different text files, you can select multiple runs in the wandb interface and overlay their metrics instantly. Need to see how learning rate affects convergence? Select all runs with different LRs and compare their loss curves side-by-side. Want to find your best-performing model from the last month? Sort by validation accuracy and boom—there it is, with all the hyperparameters clearly listed.
+Instead of manually plotting loss curves from different text files, you can select multiple runs in the wandb interface and overlay their metrics instantly. Need to see how learning rate affects convergence? Select all runs with different LRs and compare their loss curves side-by-side. Want to find your best-performing model from the last month? Sort by validation accuracy and boom—there it is, with all the hyperparameters clearly listed.
 
 You can even log media directly:
 
@@ -393,11 +401,74 @@ Since adopting wandb, I've never lost track of an experimental run, never forgot
 
 # I feel the need, the need for speed
 
-blah blah blah
+So far, I've focused on ways to keep your codebase and experiments organized—making it easier to run, track, and reproduce results. But once that's in place, it's worth considering tweaks that can actually speed up each individual experiment, especially when training times start to add up.
 
-## Compile "can" be your friend
+## Newbie gains with cupy
 
-blah blah blah
+If you find yourself writing a lot of numpy code for data wrangling or preprocessing, it's worth knowing that numpy itself is strictly CPU-bound. For larger arrays or more intensive computations, this can become a bottleneck. CuPy is a drop-in replacement for numpy that runs operations on NVIDIA GPUs, often requiring only a change from `import numpy as np` to `import cupy as cp`.
+
+For example:
+```python
+import cupy as cp
+
+# Allocate arrays on the GPU
+x = cp.arange(1000000)
+y = cp.sin(x)
+
+# Operations are performed on the GPU
+result = cp.sum(y)
+```
+
+Most common numpy functions are supported, and the syntax is nearly identical. The main caveat is that you'll need to move data between CPU and GPU explicitly, and not every numpy feature is available. But for heavy array computations, switching to CuPy can save a surprising amount of time compared to pure numpy.
+
+<div class="row mt-1">
+    <div class="col-sm mt-2 mt-md-0">
+        {% include figure.liquid loading="eager" path="assets/img/considerations/cupy_speedups.webp" class="img-fluid rounded z-depth-1" %}
+    <div class="caption">
+      Source: https://medium.com/rapids-ai/single-gpu-cupy-speedups-ea99cbbb0cbb
+    </div>
+    </div>
+</div>
+
+
+## Compile can be your friend
+
+`torch.compile()` is one of those features that's worth trying out. The idea is simple: you wrap your model (or even just a function) with `torch.compile()`, and PyTorch will try to optimize it under the hood—things like kernel fusion, better graph execution, and other tricks that can speed up training and inference. You don't need to change your code structure or rewrite your model; it's meant to be a drop-in improvement.
+
+Here's a minimal example:
+
+```python
+import torch
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(128, 256),
+    nn.ReLU(),
+    nn.Linear(256, 10)
+)
+
+# Just wrap your model
+compiled_model = torch.compile(model)
+
+# Use as usual
+for data, target in loader:
+    output = compiled_model(data)
+    loss = criterion(output, target)
+    # ...existing training code...
+```
+
+You can also compile arbitrary functions, not just models:
+
+```python
+def custom_forward(x):
+    # ...some tensor ops...
+    return x * 2 + torch.sin(x)
+
+compiled_fn = torch.compile(custom_forward)
+result = compiled_fn(torch.randn(32, 128))
+```
+
+The main tradeoff is that the first time you run a compiled model or function, it will be noticeably slower—PyTorch is tracing and optimizing the computation graph. For workloads where you only run a few batches, this overhead isn't worth it. But if you're training/evaluating for multiple iterations/batches, the initial cost gets amortized, and you can see real speedups (sometimes 20-30% or more, depending on the model and hardware).
 
 ## Async transfers
 
@@ -443,7 +514,7 @@ output_x = model(x_gpu)
 
 The key insight is using the time it takes to transfer large data to do other useful work—processing smaller tensors, running computations, or preparing the next batch<d-footnote>The PyTorch tutorial on pinned memory has more details on the underlying mechanics: https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html</d-footnote>.
 
-**The crucial caveat**: async transfers only help when the next operation doesn't immediately depend on the transferred data. If you call `model(data)` right after `.to(device, non_blocking=True)`, PyTorch will still wait for the transfer to complete before starting the forward pass.
+Async transfers only help when the next operation doesn't immediately depend on the transferred data. If you call `model(data)` right after `.to(device, non_blocking=True)`, PyTorch will still wait for the transfer to complete before starting the forward pass.
 
 The real gotcha comes when transferring data back to CPU, especially with explicit async calls:
 
@@ -463,8 +534,9 @@ def save_predictions(model, dataloader):
             predictions.extend(pred_cpu.numpy())  # Potential garbage data
 ```
 
+<div class="alert alert-danger" role="alert">
 The issue arises because when you explicitly use `non_blocking=True` for GPU→CPU transfers, the CPU doesn't wait for the transfer to complete. Accessing the data (like with `.numpy()`) before the transfer finishes gives you garbage. The fixes are straightforward:
-
+</div>
 ```python
 # Option 1: Don't use non_blocking for GPU→CPU (default behavior)
 pred_cpu = pred.cpu()  # Synchronous by default
@@ -481,11 +553,11 @@ all_preds = torch.cat(gpu_predictions, dim=0).cpu().numpy()
 
 The key insight is that async transfers shine when you can overlap them with computation that doesn't depend on the transferred data. Combined with pinned memory, this can substantially improve throughput for data-heavy workloads.
 
-## Identify bottlenecks
-
-blah blah blah
-
 ## One batch, two batch, penny and dime
+
+When it comes to inference, there's rarely a good reason not to push your GPU memory usage as much as possible. The ideal, principled approach is to calculate the maximum batch size your model and script can support, given the memory constraints. In practice, though, many tend to be a bit lazy here—usually starting with a conservative batch size and gradually increasing it until I hit an OOM error.
+
+A good sweet spot is to try and empirically infer the relationship between batch size and GPU memory consumption for your specific setup. This helps avoid surprises, especially when switching models or datasets. If you want to get a sense of your memory usage patterns, I've found it useful to track GPU memory throughout the experiment. I wrote a [barebones utility script](https://gist.github.com/iamgroot42/5f1f33e39621e545c621e90472b649d3)) that monitors `nvidia-smi` during your run and summarizes memory usage at the end. This makes it easy to spot the peak usage, debug unexpected spikes, or decide if you need to adjust batch sizes for certain inputs (e.g., truncate long sequences, partition batches for variable-length data).
 
 
 # SLURM SLURM, Peralta
@@ -582,4 +654,4 @@ As I mentioned in my [earlier post](https://www.anshumansuri.com/blog/2022/uva-r
 
 # Takeaways 
 
-blah blah blah
+Most of this post is just a collection of practical habits and tools that have made my ML workflow less painful and more reproducible. If you have other tricks or approaches that work well for you, I'd be interested to hear about them—feel free to reach out or contribute to the post [directly with a PR](https://github.com/iamgroot42/personal-website-2)!

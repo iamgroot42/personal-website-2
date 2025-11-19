@@ -5,4 +5,4 @@ inline: true
 related_posts: false
 ---
 
-:bust_in_silhouette: ??? [Datology AI](https://www.datologyai.com/).
+:bust_in_silhouette: Data Curation Meets Security: Lessons from the Evaluation Front [Datology AI](https://www.datologyai.com/).

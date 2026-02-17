@@ -5,4 +5,4 @@ inline: true
 related_posts: false
 ---
 
-Awarded Lambda Research Grant to work on training-time poisoning defenses for LLMs. Thank you, Lambda! :moneybag:  
+Awarded Lambda Research Grant to work on training-time poisoning defenses for LLMs. Thank you, Lambda! :moneybag:

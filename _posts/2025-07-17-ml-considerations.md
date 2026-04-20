@@ -41,6 +41,10 @@ toc:
   - name: Takeaways
 ---
 
+<div class="alert alert-info" role="alert">
+Funnily enough, I used tools like Claude Code for the first time a few months after writing this blogpost and now realize that a lot of this advice isn't nearly as helpful than I'd imagined it would be when I first started writing it down. I'll still keep around ¯\_(ツ)_/¯
+</div>
+
 Working on ML projects in academia (and beyond) often feels like a constant battle between moving fast to test ideas and maintaining enough organization to actually make progress.
 
 Based on my experiences, working with collaborators who have diverse coding backgrounds, and—perhaps most importantly—browsing through GitHub repositories of varying quality, I've picked up practices and design patterns that have genuinely transformed how I approach ML projects. These aren't abstract software engineering principles; they're tested techniques that have saved me from countless headaches and helped me move faster while making fewer mistakes.
